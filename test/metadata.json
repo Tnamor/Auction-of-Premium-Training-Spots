@@ -1,0 +1,10 @@
+{
+    "name": "Premium Gym Training NFT",
+    "description": "Grants access to exclusive gym training sessions and coaching",
+    "image": "ipfs://QmTcyqjFQRNM7ijngsQGfg67b2venVfZxMQhxVgvVBouQ4",
+    "attributes": [
+    { "trait_type": "Coach", "value": "Rom" },
+    { "trait_type": "Date", "value": "11/10/2024" },
+    { "trait_type": "Location", "value": "Downtown Fitness Club" }
+    ]
+}
