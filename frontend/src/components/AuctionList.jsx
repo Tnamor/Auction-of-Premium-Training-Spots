@@ -28,12 +28,27 @@ function AuctionCard({ auction, handleBid, handleEndAuction, account }) {
     return addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : "N/A";
   };
 
+  const { metadata } = auction;
+
   return (
     <div className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow flex flex-col justify-between">
       <div className="space-y-2">
         <h2 className="text-lg font-bold text-indigo-700">
           🎟 Token #{auction.tokenId}
         </h2>
+        {metadata?.image && (
+          <img
+            src={metadata.image.startsWith("ipfs://") ? `https://gateway.pinata.cloud/ipfs/${metadata.image.slice(7)}` : metadata.image}
+            alt="NFT Preview"
+            className="w-full h-48 object-cover rounded-lg"
+          />
+        )}
+        {metadata?.name && <p className="text-sm text-gray-800 font-semibold">🏷️ {metadata.name}</p>}
+        {metadata?.description && <p className="text-sm text-gray-600">📝 {metadata.description}</p>}
+        {metadata?.coach && <p className="text-sm text-gray-600">💪 Coach: {metadata.coach}</p>}
+        {metadata?.date && <p className="text-sm text-gray-600">📅 Date: {metadata.date}</p>}
+        {metadata?.location && <p className="text-sm text-gray-600">📍 Location: {metadata.location}</p>}
+
         <p className="text-sm text-gray-600">
           <strong>Seller:</strong> {shortAddress(auction.seller)}
         </p>
@@ -45,16 +60,12 @@ function AuctionCard({ auction, handleBid, handleEndAuction, account }) {
         </p>
         <p className="text-sm text-gray-600">
           <strong>Time Left:</strong>{" "}
-          <span className={timeLeft === "⏰ Expired" ? "text-red-600" : ""}>
-            {timeLeft}
-          </span>
+          <span className={timeLeft === "⏰ Expired" ? "text-red-600" : ""}>{timeLeft}</span>
         </p>
         <p className="text-sm">
           <strong>Status:</strong>{" "}
           <span
-            className={`ml-1 font-semibold ${
-              auction.ended ? "text-red-600" : "text-green-600"
-            }`}
+            className={`ml-1 font-semibold ${auction.ended ? "text-red-600" : "text-green-600"}`}
           >
             {auction.ended ? "Ended" : "Active"}
           </span>
@@ -88,15 +99,14 @@ function AuctionCard({ auction, handleBid, handleEndAuction, account }) {
         </form>
       )}
 
-      {!auction.ended &&
-        auction.seller?.toLowerCase() === account?.toLowerCase() && (
-          <button
-            className="mt-2 bg-red-600 text-white py-2 rounded hover:bg-red-700 text-sm font-medium"
-            onClick={() => handleEndAuction(auction.auctionId)}
-          >
-            End Auction
-          </button>
-        )}
+      {!auction.ended && auction.seller?.toLowerCase() === account?.toLowerCase() && (
+        <button
+          className="mt-2 bg-red-600 text-white py-2 rounded hover:bg-red-700 text-sm font-medium"
+          onClick={() => handleEndAuction(auction.auctionId)}
+        >
+          End Auction
+        </button>
+      )}
     </div>
   );
 }

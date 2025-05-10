@@ -1,73 +1,31 @@
+// components/NFTUploader.jsx
 import React, { useState } from "react";
 import NFTMintForm from "./NFTMintForm";
+import { uploadMetadataToPinata } from "../utils/pinataUpload";
 
 const NFTUploader = ({ nftContract, onMintSuccess }) => {
   const [file, setFile] = useState(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [coach, setCoach] = useState("");
+  const [date, setDate] = useState("");
+  const [location, setLocation] = useState("");
   const [metadataURI, setMetadataURI] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const uploadToPinata = async () => {
-    const PINATA_API_KEY = process.env.REACT_APP_PINATA_API_KEY;
-    const PINATA_SECRET_API_KEY = process.env.REACT_APP_PINATA_SECRET_API_KEY;
-
-    if (!PINATA_API_KEY || !PINATA_SECRET_API_KEY) {
-      throw new Error("❌ Missing Pinata API credentials.");
-    }
-
-    // Upload image
-    const imgForm = new FormData();
-    imgForm.append("file", file);
-
-    const imageRes = await fetch("https://api.pinata.cloud/pinning/pinFileToIPFS", {
-      method: "POST",
-      headers: {
-        pinata_api_key: PINATA_API_KEY,
-        pinata_secret_api_key: PINATA_SECRET_API_KEY,
-      },
-      body: imgForm,
-    });
-
-    if (!imageRes.ok) throw new Error("❌ Failed to upload image");
-    const imageData = await imageRes.json();
-    const imageCID = imageData.IpfsHash;
-
-    // Build metadata
-    const metadata = {
-      name,
-      description,
-      image: `ipfs://${imageCID}`,
-    };
-
-    const metadataRes = await fetch("https://api.pinata.cloud/pinning/pinJSONToIPFS", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        pinata_api_key: PINATA_API_KEY,
-        pinata_secret_api_key: PINATA_SECRET_API_KEY,
-      },
-      body: JSON.stringify(metadata),
-    });
-
-    if (!metadataRes.ok) throw new Error("❌ Failed to upload metadata");
-
-    const metadataData = await metadataRes.json();
-    return `ipfs://${metadataData.IpfsHash}`;
-  };
-
   const handleUpload = async () => {
     setError("");
     setMetadataURI("");
-    if (!file || !name || !description) {
+
+    if (!file || !name || !description || !coach || !date || !location) {
       setError("❗ Please fill in all fields and select a file.");
       return;
     }
 
     try {
       setLoading(true);
-      const uri = await uploadToPinata();
+      const uri = await uploadMetadataToPinata(file, name, description, coach, date, location);
       setMetadataURI(uri);
     } catch (err) {
       console.error("Upload error:", err);
@@ -99,6 +57,26 @@ const NFTUploader = ({ nftContract, onMintSuccess }) => {
         placeholder="NFT Description"
         value={description}
         onChange={(e) => setDescription(e.target.value)}
+        className="w-full p-2 border border-gray-300 rounded text-sm"
+      />
+      <input
+        type="text"
+        placeholder="Coach Name"
+        value={coach}
+        onChange={(e) => setCoach(e.target.value)}
+        className="w-full p-2 border border-gray-300 rounded text-sm"
+      />
+      <input
+        type="datetime-local"
+        value={date}
+        onChange={(e) => setDate(e.target.value)}
+        className="w-full p-2 border border-gray-300 rounded text-sm"
+      />
+      <input
+        type="text"
+        placeholder="Location"
+        value={location}
+        onChange={(e) => setLocation(e.target.value)}
         className="w-full p-2 border border-gray-300 rounded text-sm"
       />
 
