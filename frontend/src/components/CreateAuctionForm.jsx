@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import { Clock, Sparkles } from "lucide-react";
 
-const CreateAuctionForm = ({ nftContract, auctionContract, defaultTokenId = "" }) => {
+const CreateAuctionForm = ({ defaultTokenId = "" }) => {
 const [tokenId, setTokenId] = useState(defaultTokenId);
 const [duration, setDuration] = useState("");
 const [txHash, setTxHash] = useState("");
@@ -12,29 +12,19 @@ const [error, setError] = useState("");
 const [activeAuction, setActiveAuction] = useState(null);
 const [timeLeft, setTimeLeft] = useState("");
 
+const auctionABI = require("../abis/Auction.json").abi;
+const nftABI = require("../abis/GymNFT.json").abi;
+const addresses = require("../abis/auction-address.json");
+const auctionAddress = addresses.AuctionNFT;
+const nftAddress = addresses.GymNFT;
+
 useEffect(() => {
 setTokenId(defaultTokenId);
 }, [defaultTokenId]);
 
 useEffect(() => {
-if (tokenId && auctionContract) checkExistingAuction(tokenId);
-}, [tokenId, auctionContract]);
-
-const checkExistingAuction = async (id) => {
-try {
-const auction = await auctionContract.getAuction(id);
-if (auction && !auction.ended) {
-setActiveAuction(auction);
-updateCountdown(auction.endTime.toString());
-} else {
-setActiveAuction(null);
-setTimeLeft("");
-}
-} catch {
-setActiveAuction(null);
-setTimeLeft("");
-}
-};
+if (tokenId) checkExistingAuction(tokenId);
+}, [tokenId]);
 
 const updateCountdown = (endTime) => {
 const interval = setInterval(() => {
@@ -53,11 +43,35 @@ clearInterval(interval);
 }, 1000);
 };
 
+const checkExistingAuction = async (id) => {
+try {
+const provider = new ethers.BrowserProvider(window.ethereum);
+const signer = await provider.getSigner();
+const auctionContract = new ethers.Contract(auctionAddress, auctionABI, signer);
+const auction = await auctionContract.getAuction(id);
+
+scss
+Копировать
+Редактировать
+  if (auction && !auction.ended) {
+    setActiveAuction(auction);
+    updateCountdown(auction.endTime.toString());
+  } else {
+    setActiveAuction(null);
+    setTimeLeft("");
+  }
+} catch {
+  setActiveAuction(null);
+  setTimeLeft("");
+}
+};
+
 const handleCreateAuction = async () => {
 setError("");
 setTxHash("");
 if (!window.ethereum) return setError("❌ MetaMask not detected");
-if (!tokenId || isNaN(duration) || parseInt(duration) <= 0) return setError("⚠️ Enter valid Token ID and duration");
+if (!tokenId || isNaN(duration) || parseInt(duration) <= 0)
+return setError("⚠️ Enter valid Token ID and duration");
 
 
 try {
@@ -66,16 +80,21 @@ try {
   const signer = await provider.getSigner();
   const userAddress = await signer.getAddress();
 
+  const auctionContract = new ethers.Contract(auctionAddress, auctionABI, signer);
+  const nftContract = new ethers.Contract(nftAddress, nftABI, signer);
+
   const owner = await nftContract.ownerOf(tokenId);
-  if (owner.toLowerCase() !== userAddress.toLowerCase()) return setError("🚫 You are not the owner of this token");
+  if (owner.toLowerCase() !== userAddress.toLowerCase()) {
+    return setError("🚫 You are not the owner of this token");
+  }
 
   const isApproved = await nftContract.getApproved(tokenId);
-  if (isApproved.toLowerCase() !== auctionContract.target.toLowerCase()) {
-    const approveTx = await nftContract.approve(auctionContract.target, tokenId);
+  if (isApproved.toLowerCase() !== auctionAddress.toLowerCase()) {
+    const approveTx = await nftContract.approve(auctionAddress, tokenId);
     await approveTx.wait();
   }
 
-  const tx = await auctionContract.createAuction(nftContract.target, tokenId, parseInt(duration));
+  const tx = await auctionContract.createAuction(nftAddress, tokenId, parseInt(duration));
   const receipt = await tx.wait();
 
   setTxHash(receipt.hash);
@@ -121,7 +140,8 @@ return (
 
   {activeAuction && (
     <div className="flex items-center text-sm text-yellow-600 font-medium rounded bg-yellow-50 px-3 py-2 border border-yellow-300">
-      <Clock className="w-4 h-4 mr-2" /> Active auction in progress. Time left: <strong className="ml-1">{timeLeft}</strong>
+      <Clock className="w-4 h-4 mr-2" /> Active auction in progress. Time left:{" "}
+      <strong className="ml-1">{timeLeft}</strong>
     </div>
   )}
 
@@ -136,7 +156,12 @@ return (
   {txHash && (
     <p className="text-sm text-green-600 mt-1 break-words">
       ✅ Auction created!{" "}
-      <a href={`https://sepolia.etherscan.io/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="underline">
+      <a
+        href={`https://sepolia.etherscan.io/tx/${txHash}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="underline"
+      >
         View on Etherscan
       </a>
     </p>

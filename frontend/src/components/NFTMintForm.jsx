@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { ethers } from "ethers";
 import { Sparkles, Loader2, CheckCircle } from "lucide-react";
+import GymNFTABI from "../abis/GymNFT.json";
+import auctionAddresses from "../abis/auction-address.json";
 
-const NFTMintForm = ({ nftContract, tokenURI, onMintSuccess }) => {
+const NFTMintForm = ({ tokenURI, onMintSuccess }) => {
 const [txHash, setTxHash] = useState("");
 const [tokenId, setTokenId] = useState("");
 const [loading, setLoading] = useState(false);
@@ -13,12 +15,28 @@ setError("");
 setTxHash("");
 setTokenId("");
 
-if (!window.ethereum) return setError("❌ MetaMask is not available.");
-if (!tokenURI?.startsWith("ipfs://")) return setError("⚠️ Invalid Token URI.");
-if (!nftContract?.mintNFT) return setError("⚠️ NFT contract is not connected.");
+
+if (!window.ethereum) {
+  setError("❌ MetaMask is not available.");
+  return;
+}
+
+if (!tokenURI?.startsWith("ipfs://")) {
+  setError("⚠️ Invalid Token URI.");
+  return;
+}
 
 try {
   setLoading(true);
+
+  const provider = new ethers.BrowserProvider(window.ethereum);
+  const signer = await provider.getSigner();
+  const nftContract = new ethers.Contract(
+    auctionAddresses.GymNFT,
+    GymNFTABI.abi,
+    signer
+  );
+
   const tx = await nftContract.mintNFT(tokenURI.trim());
   const receipt = await tx.wait();
 
@@ -35,7 +53,7 @@ try {
   if (onMintSuccess) onMintSuccess(mintedId);
 } catch (err) {
   console.error("❌ Mint error:", err);
-  setError("❌ Failed to mint NFT. See console for details.");
+  setError(err.message || "❌ Failed to mint NFT.");
 } finally {
   setLoading(false);
 }
@@ -46,6 +64,7 @@ return (
 <div className="flex items-center gap-2 text-indigo-700 font-semibold text-xl">
 <Sparkles size={22} /> Mint NFT
 </div>
+
 
   <div className="text-sm text-gray-600 break-words bg-gray-50 p-3 rounded-md border font-mono leading-snug">
     <span className="text-gray-500 block mb-1">Token URI:</span>

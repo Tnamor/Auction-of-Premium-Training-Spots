@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import NFTMintForm from "./NFTMintForm";
 import { UploadCloud, ImageIcon } from "lucide-react";
 
-const NFTUploader = ({ nftContract, onMintSuccess }) => {
+const NFTUploader = ({ onMintSuccess }) => {
 const [file, setFile] = useState(null);
 const [name, setName] = useState("");
 const [description, setDescription] = useState("");
@@ -78,7 +78,7 @@ try {
   setMetadataURI(uri);
 } catch (err) {
   console.error("Upload error:", err);
-  setError(err.message);
+  setError(err.message || "❌ Upload failed.");
 } finally {
   setLoading(false);
 }
@@ -155,7 +155,6 @@ Upload & Mint NFT
   {metadataURI && (
     <div className="border-t pt-4">
       <NFTMintForm
-        nftContract={nftContract}
         tokenURI={metadataURI}
         onMintSuccess={onMintSuccess}
       />

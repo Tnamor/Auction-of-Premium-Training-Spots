@@ -15,14 +15,20 @@ import { resolveIPFS } from './utils/resolveIPFS';
 
 function App() {
   const [account, setAccount] = useState(null);
-  const [auctionContract, setAuctionContract] = useState(null);
-  const [nftContract, setNFTContract] = useState(null);
   const [auctions, setAuctions] = useState([]);
   const [tokenId, setTokenId] = useState('');
   const [selectedAuction, setSelectedAuction] = useState(null);
 
   const auctionAddress = auctionAddresses.AuctionNFT;
   const nftAddress = auctionAddresses.GymNFT;
+
+  const getContracts = async () => {
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner();
+    const auction = new ethers.Contract(auctionAddress, AuctionABI.abi, signer);
+    const nft = new ethers.Contract(nftAddress, GymNFTABI.abi, signer);
+    return { signer, auction, nft };
+  };
 
   useEffect(() => {
     loadBlockchainData();
@@ -43,16 +49,9 @@ function App() {
     if (!window.ethereum) return alert('Please install MetaMask');
 
     try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
+      const { signer, auction, nft } = await getContracts();
       const userAddress = await signer.getAddress();
       setAccount(userAddress);
-
-      const auction = new ethers.Contract(auctionAddress, AuctionABI.abi, signer);
-      const nft = new ethers.Contract(nftAddress, GymNFTABI.abi, signer);
-
-      setAuctionContract(auction);
-      setNFTContract(nft);
 
       const auctionCount = await auction.auctionCounter();
       const auctionData = [];
@@ -113,9 +112,9 @@ function App() {
   };
 
   const placeBid = async (auctionId, bidAmount) => {
-    if (!auctionContract) return;
     try {
-      const tx = await auctionContract.placeBid(auctionId, {
+      const { auction } = await getContracts();
+      const tx = await auction.placeBid(auctionId, {
         value: ethers.parseEther(bidAmount),
       });
       await tx.wait();
@@ -128,28 +127,27 @@ function App() {
   };
 
   const endAuction = async (auctionId) => {
-    if (!auctionContract) return;
     try {
-      const auctionInfo = await auctionContract.getAuction(auctionId);
-      const currentTime = Math.floor(Date.now() / 1000);
+      const { signer, auction } = await getContracts();
+      const signerAddress = await signer.getAddress();
+      const auctionInfo = await auction.getAuction(auctionId);
 
+      const currentTime = Math.floor(Date.now() / 1000);
       const endTime = parseInt(auctionInfo.endTime);
       const lastBidTime = parseInt(auctionInfo.lastBidTime);
 
-      if (auctionInfo.ended) {
-        alert('⚠️ Auction already ended.');
-        return;
+      if (auctionInfo.ended) return alert('⚠️ Auction already ended.');
+      if (signerAddress.toLowerCase() !== auctionInfo.seller.toLowerCase()) {
+        return alert('⛔ Only the seller can end the auction.');
       }
-
       const isExpired = currentTime >= endTime;
       const isNoBidsFor24h = currentTime > lastBidTime + 86400;
 
       if (!isExpired && !isNoBidsFor24h) {
-        alert('⏰ Auction is still active.');
-        return;
+        return alert('⏰ Auction is still active.');
       }
 
-      const tx = await auctionContract.endAuction(auctionId);
+      const tx = await auction.endAuction(auctionId);
       await tx.wait();
       alert('✅ Auction ended successfully!');
       loadBlockchainData();
@@ -178,13 +176,13 @@ function App() {
 
         <div className="grid md:grid-cols-2 gap-6">
           <SectionCard title="Mint New NFT">
-            <NFTUploader nftContract={nftContract} onMintSuccess={handleMintSuccess} />
+            <NFTUploader nftContract={null} onMintSuccess={handleMintSuccess} />
           </SectionCard>
 
           <SectionCard title="Create Auction">
             <CreateAuctionForm
-              nftContract={nftContract}
-              auctionContract={auctionContract}
+              nftContract={null}
+              auctionContract={null}
               defaultTokenId={tokenId}
             />
           </SectionCard>

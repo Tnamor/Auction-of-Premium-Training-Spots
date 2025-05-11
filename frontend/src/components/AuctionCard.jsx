@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 
-function AuctionCard({ auction, handleBid, handleEndAuction, account }) {
+function AuctionCard({ auction, handleBid, handleEndAuction, account, onView }) {
 const [timeLeft, setTimeLeft] = useState("");
 const [bidAmount, setBidAmount] = useState("");
 
@@ -12,10 +12,8 @@ const updateTime = () => {
 const now = Math.floor(Date.now() / 1000);
 const seconds = parseInt(auction.endTime) - now;
 
-
   if (seconds <= 0) {
     setTimeLeft("Expired");
-    if (!auction.ended && isOwner) handleEndAuction(auction.auctionId);
     return;
   }
 
@@ -28,18 +26,22 @@ const seconds = parseInt(auction.endTime) - now;
 updateTime();
 const interval = setInterval(updateTime, 1000);
 return () => clearInterval(interval);
-}, [auction.endTime, auction.ended, account]);
+}, [auction.endTime]);
 
 return (
 <div className="relative bg-white rounded-2xl shadow border border-gray-200 overflow-hidden hover:shadow-xl transition flex flex-col">
 <div className="relative">
 {auction.metadata?.image && (
-<img src={ auction.metadata.image.startsWith("ipfs://") ? `https://gateway.pinata.cloud/ipfs/${auction.metadata.image.slice(7)}`
+<img
+src={
+auction.metadata.image.startsWith("ipfs://")
+? `https://gateway.pinata.cloud/ipfs/${auction.metadata.image.slice(7)}`
 : auction.metadata.image
 }
 alt={auction.metadata?.name}
 className="w-full h-60 object-cover"
-/>)}
+/>
+)}
 <div className="absolute top-2 left-2 bg-white text-xs font-medium text-gray-600 px-2 py-1 rounded shadow">
 {short(auction.seller)}
 </div>
@@ -50,8 +52,7 @@ Owner
 )}
 </div>
 
-
-  <div className="p-4 flex-1 flex flex-col justify-between space-y-2">
+  <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
     <div>
       <h3 className="text-base font-semibold text-gray-900 truncate">
         {auction.metadata?.name || `Token #${auction.tokenId}`}
@@ -76,7 +77,12 @@ Owner
           {timeLeft}
         </span>
       </p>
-      <p>Status: <span className={`font-semibold ${auction.ended ? "text-red-600" : "text-green-600"}`}>{auction.ended ? "Ended" : "Active"}</span></p>
+      <p>
+        Status:{" "}
+        <span className={`font-semibold ${auction.ended ? "text-red-600" : "text-green-600"}`}>
+          {auction.ended ? "Ended" : "Active"}
+        </span>
+      </p>
     </div>
 
     {!auction.ended && (
@@ -115,6 +121,13 @@ Owner
         🔚 End Auction
       </button>
     )}
+
+    <button
+      onClick={onView}
+      className="w-full mt-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm py-2 rounded-lg font-medium"
+    >
+      View Details
+    </button>
   </div>
 </div>
 );

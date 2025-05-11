@@ -5,24 +5,36 @@ const AuctionDetail = ({ auction, handleBid, handleEndAuction, account }) => {
 const [timeLeft, setTimeLeft] = useState("");
 const [bidValue, setBidValue] = useState("");
 
+const isOwner = auction.seller?.toLowerCase() === account?.toLowerCase();
+const shorten = (addr) => (addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : "-");
+
 useEffect(() => {
-const timer = setInterval(() => {
+const updateTimer = () => {
 const now = Math.floor(Date.now() / 1000);
 const secondsLeft = parseInt(auction.endTime) - now;
-if (secondsLeft <= 0) {
-setTimeLeft("⏰ Expired");
-} else {
-const h = Math.floor(secondsLeft / 3600);
-const m = Math.floor((secondsLeft % 3600) / 60);
-const s = secondsLeft % 60;
-setTimeLeft(`${h}h ${m}m ${s}s`);
-}
-}, 1000);
-return () => clearInterval(timer);
-}, [auction.endTime]);
 
-const isOwner = auction.seller?.toLowerCase() === account?.toLowerCase();
-const shorten = (addr) => addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : "-";
+
+  if (secondsLeft <= 0 || auction.ended) {
+    setTimeLeft("⏰ Expired");
+  } else {
+    const h = Math.floor(secondsLeft / 3600);
+    const m = Math.floor((secondsLeft % 3600) / 60);
+    const s = secondsLeft % 60;
+    setTimeLeft(`${h}h ${m}m ${s}s`);
+  }
+};
+
+updateTimer();
+const interval = setInterval(updateTimer, 1000);
+return () => clearInterval(interval);
+}, [auction.endTime, auction.ended]);
+
+const handleSubmit = (e) => {
+e.preventDefault();
+if (!bidValue || isNaN(bidValue) || parseFloat(bidValue) <= 0) return;
+handleBid(auction.auctionId, bidValue);
+setBidValue("");
+};
 
 return (
 <div className="bg-white border rounded-2xl shadow-xl p-6 w-full max-w-2xl mx-auto space-y-5">
@@ -87,14 +99,7 @@ Auction Details – Token #{auction.tokenId}
   </div>
 
   {!auction.ended && (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        handleBid(auction.auctionId, bidValue);
-        setBidValue("");
-      }}
-      className="space-y-2"
-    >
+    <form onSubmit={handleSubmit} className="space-y-2">
       <input
         type="number"
         min="0"
