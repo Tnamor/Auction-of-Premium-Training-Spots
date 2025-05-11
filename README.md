@@ -1,154 +1,175 @@
 # Gym NFT Auction
+A decentralized application (DApp) where users can mint and bid on premium training spot NFTs with celebrity coaches. Each training session is a unique ERC-721 token auctioned transparently on the Ethereum blockchain.
 
-This is a decentralized application (DApp) that allows users to bid on premium training spots represented as NFTs (ERC-721). The project includes a smart contract deployed on Ethereum, a frontend built with React, and uses Pinata to store images and metadata for NFTs.
+Built with:
 
-## Features
+Smart Contracts (Solidity, Hardhat)
 
-- **Auction System**: Users can create and participate in auctions for training spots.
-- **NFTs (ERC-721)**: Training spots are represented as unique NFTs.
-- **Pinata Integration**: Images and metadata for NFTs are uploaded to IPFS via Pinata.
-- **MetaMask Integration**: Interact with the Ethereum blockchain using the MetaMask wallet.
-- **Smart Contract**: Developed in Solidity using OpenZeppelin contracts.
+React (frontend)
 
-## Prerequisites
+IPFS + Pinata (for media and metadata)
 
-Before you can run the project, make sure you have the following installed:
+## MetaMask (for wallet interaction)
 
-- [Node.js](https://nodejs.org/) (v14 or higher)
-- [npm](https://www.npmjs.com/) or [Yarn](https://yarnpkg.com/)
-- [Git](https://git-scm.com/)
-- [MetaMask](https://metamask.io/) wallet extension in your browser
-- [Pinata](https://www.pinata.cloud/) account for uploading NFT metadata and images.
+   Features
+   Mint unique training spot NFTs (ERC-721)
+
+   Create & participate in live auctions
+
+   Upload metadata (image, coach, location, time)
+
+   Secure bidding & transfer of NFTs
+
+   MetaMask integration
+
+   Powered by Ethereum & IPFS (via Pinata)
+
+   Prerequisites
+Node.js ≥ 14.x
+npm or yarn
+
+## Git
+
+MetaMask browser extension
+
+Pinata account (for storing NFT metadata on IPFS)
 
 ## Installation
-
 ### 1. Clone the repository
+bash
 
-Clone this repository to your local machine using Git:
-
-```bash
+`
 git clone https://github.com/Tnamor/Auction-of-Premium-Training-Spots.git
 cd Auction-of-Premium-Training-Spots
-```
-2. Install dependencies
-Install the required dependencies for the project:
-```
+`
+
+### 3. Install frontend dependencies
 bash
+
+`
 npm install
-or if you're using Yarn:
-
-bash
+or
 yarn install
-```
-3. Set up environment variables
-You need two .env files for this project. One is for the frontend (React) and the other one is for the smart contract deployment.
+`
 
-3.1. Frontend .env file
-This file should be placed in the root directory of the project (where package.json is located for the frontend). It contains environment variables for Pinata API and other settings.
+## Environment Variables
+You’ll need two .env files: one for the frontend and one for the smart contracts.
 
-Path: /AuctionNFTProject/.env
+Frontend (.env)
+Path: /Auction-of-Premium-Training-Spots/.env
 
-Example contents for the frontend:
+Example:
 
-plaintext
+`
 REACT_APP_PINATA_API_KEY=your_pinata_api_key
 REACT_APP_PINATA_SECRET_API_KEY=your_pinata_secret_api_key
-Replace your_pinata_api_key and your_pinata_secret_api_key with your actual Pinata API credentials.
+`
 
-3.2. Smart Contract .env file
-If you're using environment variables for network settings or deployment, you need a second .env file for the smart contract (e.g., when using Hardhat or Truffle). This file is used for deployment configurations like Infura, your private key, etc.
+This enables uploading NFT metadata to IPFS via Pinata.
 
-Path: /AuctionNFTProject/.env (or /AuctionNFTProject/contracts/.env depending on your setup)
+## Smart Contracts (.env)
+Path: /Auction-of-Premium-Training-Spots/contracts/.env (or root)
 
-Example contents for Hardhat:
-
-plaintext
+Example for Hardhat:
+`
 INFURA_PROJECT_ID=your_infura_project_id
-PRIVATE_KEY=your_private_key
-Replace your_infura_project_id and your_private_key with your actual Infura project ID and the private key needed for deploying to Ethereum.
+PRIVATE_KEY=your_wallet_private_key
+`
 
-4. Smart Contract Deployment
-You will need to deploy the smart contract on Ethereum (either on a testnet or the mainnet). The contract is located in the /contracts folder. Use Hardhat or Truffle to deploy it. Here's an example of using Hardhat:
+Used for contract deployment to Sepolia or another testnet.
 
-Install Hardhat:
-```
+⚙️ Contract Deployment (via Hardhat)
+Install Hardhat (if not already):
+
 bash
+
+`
 npm install --save-dev hardhat
-Compile the contract:
+`
+
+Compile:
 
 bash
+
+`
 npx hardhat compile
-Deploy the contract to the Ethereum network (adjust the hardhat.config.js for your network):
+`
+
+Deploy:
+
+Update hardhat.config.js with your network and deploy:
 
 bash
-npx hardhat run scripts/deploy.js --network rinkeby
-```
-5. Update frontend with contract address
-Once the smart contract is deployed, update the frontend in the App.js file with the contract address and ABI.
 
-javascript
-const contractAddress = "your_contract_address";
-const contractABI = [...];
-Replace "your_contract_address" with the address of your deployed smart contract and the correct ABI.
+`
+npx hardhat run scripts/deploy.js --network sepolia
+`
 
-Running the Application
-Once everything is set up, run the frontend application:
-```
+After deployment, copy contract addresses and ABIs to:
+
+frontend/src/abis/auction-address.json
+frontend/src/abis/Auction.json
+frontend/src/abis/GymNFT.json
+
+Running the Frontend
 bash
+
+`
 npm start
 or
+yarn start
+`
+
+Visit: http://localhost:3000
+
+Ensure MetaMask is unlocked and connected to the correct network (e.g., Sepolia).
+
+App Usage
+Upload image + metadata (coach, date, description, location) to IPFS via Pinata.
+
+Mint NFT with metadata URI.
+
+Start an auction for your token.
+
+Users can place ETH bids in real time.
+
+Auction owner can manually end the auction.
+
+NFT is transferred to the highest bidder after auction ends.
+
+Automatic ending if no new bids within 24 hours.
+
+## Testing (Optional)
+To test locally:
 
 bash
-yarn start
-```
-This will start the development server, and you can access the app at http://localhost:3000 in your browser.
 
-Interacting with the Smart Contract
-MetaMask: Make sure MetaMask is installed and connected to the appropriate Ethereum network (Mainnet, Rinkeby, or another testnet).
+`
+npx hardhat node
+npx hardhat run scripts/deploy.js --network localhost
+`
 
-Minting NFTs: The frontend allows users to mint NFTs by uploading images and metadata via Pinata. The minting process involves interacting with the smart contract to create the NFTs.
+And connect MetaMask to http://localhost:8545.
 
-Placing Bids: Users can participate in live auctions by placing bids in Ether (ETH).
+## Contributing
+Feel free to fork, improve or submit pull requests:
 
-Contributing
-If you want to contribute to this project, feel free to fork the repository and submit a pull request. Here's how you can contribute:
+Fork this repo
 
-Fork the repository.
+Create a feature branch
 
-Create a feature branch (git checkout -b feature/your-feature).
+Commit your changes
 
-Commit your changes (git commit -am 'Add new feature').
+Open a pull request
 
-Push to the branch (git push origin feature/your-feature).
+## Resources
 
-Create a new pull request.
+Solidity Docs: https://docs.soliditylang.org/
 
-License
-This project is licensed under the MIT License - see the LICENSE file for details.
+OpenZeppelin: https://docs.openzeppelin.com/contracts
 
-Additional Resources
-Solidity Documentation
+Hardhat: https://hardhat.org/getting-started/
 
-OpenZeppelin Contracts
+Pinata: https://docs.pinata.cloud/
 
-Hardhat Documentation
-
-Pinata Documentation
-
-yaml
-
----
-
-### Key Changes:
-
-1. **Two `.env` files**:
-   - One for the frontend (React) with Pinata API keys.
-   - One for the smart contract deployment, typically for services like Infura and private keys.
-
-2. **Paths for `.env` files**:
-   - Frontend `.env`: `/AuctionNFTProject/.env` (in the root directory of the frontend).
-   - Smart Contract `.env`: `/AuctionNFTProject/.env` or `/AuctionNFTProject/contracts/.env` (depending on your configuration).
-
----
-
-This should now cover everything, including how to set up and configure the environment variables properl
+MetaMask: https://metamask.io/
