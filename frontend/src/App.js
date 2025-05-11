@@ -1,11 +1,12 @@
-// App.js
+// src/App.js
 import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import Navbar from './components/Navbar';
 import AuctionList from './components/AuctionList';
 import CreateAuctionForm from './components/CreateAuctionForm';
 import NFTUploader from './components/NFTUploader';
-import NFTMintForm from './components/NFTMintForm';
+import AuctionDetail from './components/AuctionDetail';
+import AppLayout, { SectionCard } from './components/AppLayout';
 
 import auctionAddresses from './abis/auction-address.json';
 import AuctionABI from './abis/Auction.json';
@@ -17,8 +18,8 @@ function App() {
   const [auctionContract, setAuctionContract] = useState(null);
   const [nftContract, setNFTContract] = useState(null);
   const [auctions, setAuctions] = useState([]);
-  const [metadataURI, setMetadataURI] = useState("");
-  const [tokenId, setTokenId] = useState("");
+  const [tokenId, setTokenId] = useState('');
+  const [selectedAuction, setSelectedAuction] = useState(null);
 
   const auctionAddress = auctionAddresses.AuctionNFT;
   const nftAddress = auctionAddresses.GymNFT;
@@ -29,8 +30,17 @@ function App() {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    if (window.ethereum) {
+      window.ethereum.on('accountsChanged', ([newAccount]) => {
+        setAccount(newAccount);
+        loadBlockchainData();
+      });
+    }
+  }, []);
+
   const loadBlockchainData = async () => {
-    if (!window.ethereum) return alert("Please install MetaMask");
+    if (!window.ethereum) return alert('Please install MetaMask');
 
     try {
       const provider = new ethers.BrowserProvider(window.ethereum);
@@ -57,9 +67,9 @@ function App() {
           const url = resolveIPFS(tokenURI);
           const res = await fetch(url);
 
-          const contentType = res.headers.get("content-type");
-          if (!contentType || !contentType.includes("application/json")) {
-            throw new Error("Not a JSON metadata URI");
+          const contentType = res.headers.get('content-type');
+          if (!contentType || !contentType.includes('application/json')) {
+            throw new Error('Not a JSON metadata URI');
           }
 
           metadata = await res.json();
@@ -81,18 +91,24 @@ function App() {
 
       setAuctions(auctionData);
     } catch (err) {
-      console.error("❌ Blockchain loading failed:", err);
+      console.error('❌ Blockchain loading failed:', err);
     }
   };
 
   const switchAccount = async () => {
     try {
       setAccount(null);
-      const [newAccount] = await window.ethereum.request({ method: "eth_requestAccounts" });
+      await window.ethereum.request({
+        method: 'wallet_requestPermissions',
+        params: [{ eth_accounts: {} }],
+      });
+      const [newAccount] = await window.ethereum.request({
+        method: 'eth_requestAccounts',
+      });
       setAccount(newAccount);
       loadBlockchainData();
     } catch (err) {
-      console.error("Switch account failed:", err);
+      console.error('❌ Switch failed:', err);
     }
   };
 
@@ -103,29 +119,44 @@ function App() {
         value: ethers.parseEther(bidAmount),
       });
       await tx.wait();
-      alert("✅ Bid placed successfully!");
+      alert('✅ Bid placed successfully!');
       loadBlockchainData();
     } catch (err) {
-      console.error("Bid error:", err);
-      alert("❌ Failed to place bid");
+      console.error('Bid error:', err);
+      alert('❌ Failed to place bid');
     }
   };
 
   const endAuction = async (auctionId) => {
     if (!auctionContract) return;
     try {
+      const auctionInfo = await auctionContract.getAuction(auctionId);
+      const currentTime = Math.floor(Date.now() / 1000);
+
+      const endTime = parseInt(auctionInfo.endTime);
+      const lastBidTime = parseInt(auctionInfo.lastBidTime);
+
+      if (auctionInfo.ended) {
+        alert('⚠️ Auction already ended.');
+        return;
+      }
+
+      const isExpired = currentTime >= endTime;
+      const isNoBidsFor24h = currentTime > lastBidTime + 86400;
+
+      if (!isExpired && !isNoBidsFor24h) {
+        alert('⏰ Auction is still active.');
+        return;
+      }
+
       const tx = await auctionContract.endAuction(auctionId);
       await tx.wait();
-      alert("✅ Auction ended successfully!");
+      alert('✅ Auction ended successfully!');
       loadBlockchainData();
     } catch (err) {
-      console.error("End auction error:", err);
-      alert("❌ Failed to end auction");
+      console.error('End auction error:', err);
+      alert('❌ Failed to end auction');
     }
-  };
-
-  const handleUpload = (uri) => {
-    setMetadataURI(uri);
   };
 
   const handleMintSuccess = (mintedTokenId) => {
@@ -134,55 +165,69 @@ function App() {
   };
 
   return (
-    <div className="bg-gradient-to-b from-gray-50 to-gray-200 min-h-screen">
+    <AppLayout>
       <Navbar account={account} onLogout={switchAccount} />
 
       <main className="max-w-7xl mx-auto px-4 py-12 space-y-16">
         <header className="text-center">
           <h1 className="text-4xl md:text-5xl font-extrabold text-indigo-700">
-            🏋️ Premium Training NFT Auction
+            Premium Training NFT Auction
           </h1>
           <p className="text-gray-500 mt-2 text-lg">Powered by Ethereum & IPFS</p>
         </header>
 
-        <div className="grid md:grid-cols-2 gap-10">
-          <section className="bg-white shadow rounded-2xl p-6">
-            <h2 className="text-xl font-semibold mb-4">🎨 Mint New NFT</h2>
+        <div className="grid md:grid-cols-2 gap-6">
+          <SectionCard title="Mint New NFT">
             <NFTUploader nftContract={nftContract} onMintSuccess={handleMintSuccess} />
-          </section>
+          </SectionCard>
 
-          <section className="bg-white shadow rounded-2xl p-6">
-            <h2 className="text-xl font-semibold mb-4">📦 Create Auction</h2>
+          <SectionCard title="Create Auction">
             <CreateAuctionForm
               nftContract={nftContract}
               auctionContract={auctionContract}
               defaultTokenId={tokenId}
             />
-          </section>
+          </SectionCard>
         </div>
 
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold text-gray-800">🏆 Active Auctions</h2>
+        <SectionCard title="Active Auctions">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-2xl font-bold text-gray-800">Auctions</h2>
             <button
               onClick={loadBlockchainData}
               className="text-sm bg-gray-200 hover:bg-gray-300 rounded px-3 py-1"
             >
-              🔄 Refresh
+              Refresh
             </button>
           </div>
 
-          <div className="bg-white shadow rounded-xl p-4">
-            <AuctionList
-              auctionData={auctions}
+          <AuctionList
+            auctionData={auctions}
+            handleBid={placeBid}
+            handleEndAuction={endAuction}
+            account={account}
+            onSelectAuction={(auction) => setSelectedAuction(auction)}
+          />
+        </SectionCard>
+
+        {selectedAuction && (
+          <SectionCard title="🔍 Auction Detail">
+            <AuctionDetail
+              auction={selectedAuction}
               handleBid={placeBid}
               handleEndAuction={endAuction}
               account={account}
             />
-          </div>
-        </section>
+            <button
+              onClick={() => setSelectedAuction(null)}
+              className="w-full mt-3 bg-gray-200 hover:bg-gray-300 py-2 rounded text-sm"
+            >
+              Close Detail
+            </button>
+          </SectionCard>
+        )}
       </main>
-    </div>
+    </AppLayout>
   );
 }
 

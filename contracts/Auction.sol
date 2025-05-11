@@ -12,11 +12,13 @@ contract Auction is Ownable {
         uint256 highestBid;
         address payable highestBidder;
         uint256 endTime;
+        uint256 lastBidTime;
         bool ended;
     }
 
     uint256 public auctionCounter;
     mapping(uint256 => AuctionItem) public auctions;
+    mapping(address => mapping(uint256 => bool)) public activeTokenAuction;
 
     event AuctionCreated(uint256 auctionId, address nftAddress, uint256 tokenId, uint256 endTime);
     event NewHighestBid(uint256 auctionId, address bidder, uint256 amount);
@@ -25,9 +27,12 @@ contract Auction is Ownable {
     constructor(address initialOwner) Ownable(initialOwner) {}
 
     function createAuction(address nftAddress, uint256 tokenId, uint256 durationInMinutes) external {
+        require(!activeTokenAuction[nftAddress][tokenId], "Token already on auction");
+
         IERC721(nftAddress).transferFrom(msg.sender, address(this), tokenId);
 
-        uint256 endTime = block.timestamp + (durationInMinutes * 1 minutes);
+        uint256 endTime = block.timestamp + durationInMinutes * 1 minutes;
+
         auctions[auctionCounter] = AuctionItem({
             nftAddress: nftAddress,
             tokenId: tokenId,
@@ -35,8 +40,11 @@ contract Auction is Ownable {
             highestBid: 0,
             highestBidder: payable(address(0)),
             endTime: endTime,
+            lastBidTime: block.timestamp,
             ended: false
         });
+
+        activeTokenAuction[nftAddress][tokenId] = true;
 
         emit AuctionCreated(auctionCounter, nftAddress, tokenId, endTime);
         auctionCounter++;
@@ -44,7 +52,10 @@ contract Auction is Ownable {
 
     function placeBid(uint256 auctionId) external payable {
         AuctionItem storage auction = auctions[auctionId];
-        require(block.timestamp < auction.endTime, "Auction ended");
+
+        require(!auction.ended, "Auction already ended");
+        require(block.timestamp < auction.endTime, "Auction expired");
+        require(msg.sender != auction.highestBidder, "Already highest bidder");
         require(msg.value > auction.highestBid, "Bid too low");
 
         if (auction.highestBidder != address(0)) {
@@ -53,36 +64,36 @@ contract Auction is Ownable {
 
         auction.highestBid = msg.value;
         auction.highestBidder = payable(msg.sender);
+        auction.lastBidTime = block.timestamp;
 
         emit NewHighestBid(auctionId, msg.sender, msg.value);
     }
 
-    function endAuction(uint256 auctionId) external {
+    function endAuction(uint256 auctionId) public {
         AuctionItem storage auction = auctions[auctionId];
+
         require(!auction.ended, "Auction already ended");
-        require(block.timestamp >= auction.endTime, "Auction not finished yet");
+        require(block.timestamp >= auction.endTime || block.timestamp > auction.lastBidTime + 24 hours, "Auction still active");
 
         auction.ended = true;
+        activeTokenAuction[auction.nftAddress][auction.tokenId] = false;
+
         if (auction.highestBidder != address(0)) {
-            IERC721(auction.nftAddress).transferFrom(address(this), auction.highestBidder, auction.tokenId);
+            IERC721(auction.nftAddress).safeTransferFrom(address(this), auction.highestBidder, auction.tokenId);
             auction.seller.transfer(auction.highestBid);
         } else {
-            IERC721(auction.nftAddress).transferFrom(address(this), auction.seller, auction.tokenId);
+            IERC721(auction.nftAddress).safeTransferFrom(address(this), auction.seller, auction.tokenId);
         }
 
         emit AuctionEnded(auctionId, auction.highestBidder, auction.highestBid);
     }
 
-    function getAuction(uint256 auctionId) public view returns (
-        address nftAddress,
-        uint256 tokenId,
-        address seller,
-        uint256 highestBid,
-        address highestBidder,
-        uint256 endTime,
-        bool ended
-    ) {
-        AuctionItem storage a = auctions[auctionId];
-        return (a.nftAddress, a.tokenId, a.seller, a.highestBid, a.highestBidder, a.endTime, a.ended);
+    function getAuction(uint256 auctionId) public view returns (AuctionItem memory) {
+        return auctions[auctionId];
+    }
+
+    // Required to accept ERC721 safeTransfer
+    function onERC721Received(address, address, uint256, bytes calldata) external pure returns (bytes4) {
+        return this.onERC721Received.selector;
     }
 }
